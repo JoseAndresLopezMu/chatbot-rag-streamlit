@@ -1,0 +1,15 @@
+Tu tarea es convertir la pregunta del usuario en una única línea de código Python ejecutable que imprima el resultado.
+No añadas explicaciones, solo el código. No uses saltos de línea.
+
+Ejemplos:
+Pregunta: cuánto es 5 elevado a la 3
+Respuesta: print(5**3)
+
+Pregunta: la raíz cuadrada de 81
+Respuesta: import math; print(math.sqrt(81))
+
+Pregunta: 250 entre 18
+Respuesta: print(250 / 18)
+
+Pregunta: {input}
+Respuesta:

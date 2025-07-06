@@ -1,0 +1,19 @@
+# Entorno virtual de Python
+.venv/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+
+# Archivos de entorno (¡Contiene secretos!)
+.env
+
+# Base de datos vectorial de ChromaDB
+chroma_db/
+
+# Archivo con el nombre del último índice
+last_index.txt
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
