@@ -70,7 +70,7 @@ def execute_python_code(code: str) -> str:
         from contextlib import redirect_stdout
         f = io.StringIO()
         with redirect_stdout(f):
-            exec(code)
+            exec(code)  # nosec B102
         return f"El resultado es: {f.getvalue()}"
     except Exception as e:
         return f"Error ejecutando código: {e}"
