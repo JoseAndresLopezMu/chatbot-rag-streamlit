@@ -190,20 +190,52 @@ if prompt := st.chat_input("Haz una pregunta sobre los documentos o pide un cál
     st.chat_message("user").markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Pensando..."):
+        with st.spinner("Clasificando pregunta..."):
             route = router_chain.invoke({"input": prompt})
-            answer = ""
 
-            if "python" in route.lower():
-                st.info("Ruta seleccionada: **Código Python**", icon="🐍")
+        answer = ""
+        source_docs = []
+
+        if "python" in route.lower():
+            st.info("Ruta seleccionada: **Código Python**", icon="🐍")
+            with st.spinner("Ejecutando cálculo..."):
                 answer = python_chain.invoke({"input": prompt})
-            else:
-                st.info("Ruta seleccionada: **Búsqueda en Documentos (RAG)**", icon="📚")
-                response = rag_chain.invoke({"input": prompt, "chat_history": chat_history})
-                answer = response.get("answer", "No pude encontrar una respuesta.")
-
             st.markdown(answer)
 
+        else:
+            st.info("Ruta seleccionada: **Búsqueda en Documentos (RAG)**", icon="📚")
+            placeholder = st.empty()
+            accumulated = ""
+
+            for chunk in rag_chain.stream({"input": prompt, "chat_history": chat_history}):
+                if "context" in chunk:
+                    source_docs = chunk["context"]
+                if "answer" in chunk:
+                    accumulated += chunk["answer"]
+                    placeholder.markdown(accumulated + "▌")
+
+            placeholder.markdown(accumulated)
+            answer = accumulated
+
+            # Source citations
+            if source_docs:
+                seen: set = set()
+                unique_sources = []
+                for doc in source_docs:
+                    key = (
+                        doc.metadata.get("file_name", "?"),
+                        doc.metadata.get("page_number", "?"),
+                    )
+                    if key not in seen:
+                        seen.add(key)
+                        unique_sources.append(doc)
+                with st.expander("📎 Ver fuentes consultadas", expanded=False):
+                    for doc in unique_sources:
+                        fname = doc.metadata.get("file_name", "Desconocido")
+                        pnum = doc.metadata.get("page_number", "?")
+                        st.markdown(f"- **{fname}** — Página {pnum}")
+
+        if answer:
             memory.save_context({"input": prompt}, {"answer": answer})
 
 if st.button("Limpiar Chat"):
