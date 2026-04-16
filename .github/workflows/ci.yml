@@ -14,14 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: actions/setup-python@v5
         with:
-          version: "latest"
+          python-version: "3.10"
 
-      - name: Install test dependencies
-        # Only install lightweight deps needed for lint+test.
-        # Heavy ML stack (easyocr, torch, chromadb…) is mocked in conftest.py.
-        run: uv pip install --system ruff pytest loguru tqdm
+      - name: Install lint dependencies
+        # Only lightweight deps — heavy ML stack is mocked in tests/conftest.py
+        run: pip install ruff
 
       - name: Ruff — check
         run: ruff check .
@@ -33,12 +32,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: actions/setup-python@v5
         with:
-          version: "latest"
+          python-version: "3.10"
 
       - name: Install test dependencies
-        run: uv pip install --system pytest loguru tqdm
+        run: pip install pytest loguru tqdm
 
       - name: Run tests
         run: pytest tests/ -v --tb=short
@@ -50,12 +49,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: actions/setup-python@v5
         with:
-          version: "latest"
+          python-version: "3.10"
 
       - name: Install bandit
-        run: uv pip install --system bandit
+        run: pip install bandit
 
       - name: Run bandit
-        run: bandit -r . --exclude .venv,tests -ll -q
+        run: bandit -r . -x .venv,tests -ll -q
