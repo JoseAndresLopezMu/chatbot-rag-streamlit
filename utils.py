@@ -44,13 +44,16 @@ def get_pages_from_pdf(pdf_path: str) -> list:
     """Returns list of page dicts: {"page": int (1-based), "text": str}."""
     raw_pages = pymupdf4llm.to_markdown(pdf_path, page_chunks=True, show_progress=False)
     result = []
-    for page_data in raw_pages:
+    for idx, page_data in enumerate(raw_pages):
         text = page_data["text"]
         text = re.sub(r"\n-{3,}\n", "\n\n", text)
         text = re.sub(r"={5,} Page \d+ ={5,}\n", "", text)
         text = re.sub(r"\n\*\*([^\n]+)\*\*\s*\n", r"\n## \1\n\n", text)
         text = re.sub(r"\n(\d+\.)\s*\*\*([^\n]+)\*\*", r"\n\1 \2", text)
-        result.append({"page": page_data["metadata"]["page"], "text": text})
+        # Fallback to 1-based index if metadata key changed across pymupdf4llm versions
+        meta = page_data.get("metadata", {})
+        page_num = meta.get("page", idx + 1)
+        result.append({"page": page_num, "text": text})
     return result
 
 
