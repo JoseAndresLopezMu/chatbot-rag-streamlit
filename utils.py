@@ -11,8 +11,14 @@ from datetime import datetime
 import pymupdf4llm
 from cache_to_disk import cache_to_disk
 from chonkie import RecursiveChunker, RecursiveLevel, RecursiveRules
-from chonkie.chunker.base import BaseChunker
-from chonkie.utils import Visualizer
+try:
+    from chonkie.chunker.base import BaseChunker
+except ImportError:
+    BaseChunker = object  # type: ignore[assignment,misc]
+try:
+    from chonkie.utils import Visualizer
+except ImportError:
+    Visualizer = None  # type: ignore[assignment,misc]
 
 try:
     import easyocr
@@ -58,14 +64,14 @@ def get_chunker_advanced() -> BaseChunker:
 def create_chunk_documents(pdf_paths: list[str], include_image_descriptions: bool, visualize_chunks: bool = False) -> List[Document]:
     all_documents = []
     chunker = get_chunker_advanced()
-    visualizer = Visualizer() # Inicializamos el visualizador fuera del bucle
+    visualizer = Visualizer() if Visualizer is not None else None
 
     for pdf_path in tqdm(pdf_paths, desc="Procesando PDFs"):
         # 1. Obtenemos el texto base del PDF (sin OCR)
         md_text = get_md_from_pdf_path(pdf_path)
 
         # 2. Si se quiere visualizar, lo hacemos AHORA, solo con el texto del PDF
-        if visualize_chunks:
+        if visualize_chunks and visualizer is not None:
             logger.info("Generando visualización de chunks (solo texto de PDF)...")
             # El visualizador necesita los chunks Y el texto original como tercer argumento posicional
             chunks_for_viz = chunker(md_text)
