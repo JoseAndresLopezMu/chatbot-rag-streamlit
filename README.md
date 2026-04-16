@@ -1,3 +1,12 @@
+---
+title: Chatbot RAG
+emoji: 💬
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # Chatbot RAG con Agente y Ejecución de Código 🚀
 
 ![CI](https://github.com/JoseAndresLopezMu/chatbot-rag-streamlit/actions/workflows/ci.yml/badge.svg)
