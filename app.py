@@ -1,8 +1,6 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-from typing import List
-import json
 from pathlib import Path
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -16,7 +14,6 @@ from langchain.memory import ConversationSummaryBufferMemory
 from langchain_core.output_parsers import StrOutputParser
 
 from utils import (
-    get_vectorstore_from_disk,
     extract_structured_info_from_pdf,
 )
 
@@ -52,7 +49,7 @@ def load_retriever():
     if not INDEX_TO_LOAD:
         st.error("Error: No se encontró el índice. Por favor, ejecuta el script `index.py` primero.", icon="❌")
         st.stop()
-    
+
     try:
         from langchain_community.embeddings import OllamaEmbeddings
         embedding_model = OllamaEmbeddings(model=EMBEDDING_MODEL_NAME)
@@ -95,13 +92,13 @@ def get_rag_chain(_llm, _retriever):
         ("user", "{input}"),
     ])
     history_aware_retriever = create_history_aware_retriever(_llm, _retriever, contextualize_q_prompt)
-    
+
     qa_prompt = ChatPromptTemplate.from_messages([
         ("system", RAG_SYSTEM_PROMPT),
         MessagesPlaceholder("chat_history"),
         ("user", "{input}"),
     ])
-    
+
     qa_chain = create_stuff_documents_chain(_llm, qa_prompt)
     rag_chain = create_retrieval_chain(history_aware_retriever, qa_chain)
     return rag_chain
@@ -173,12 +170,12 @@ for message in chat_history:
 
 if prompt := st.chat_input("Haz una pregunta sobre los documentos o pide un cálculo..."):
     st.chat_message("user").markdown(prompt)
-    
+
     with st.chat_message("assistant"):
         with st.spinner("Pensando..."):
             route = router_chain.invoke({"input": prompt})
             answer = ""
-            
+
             if "python" in route.lower():
                 st.info("Ruta seleccionada: **Código Python**", icon="🐍")
                 answer = python_chain.invoke({"input": prompt})
@@ -188,7 +185,7 @@ if prompt := st.chat_input("Haz una pregunta sobre los documentos o pide un cál
                 answer = response.get("answer", "No pude encontrar una respuesta.")
 
             st.markdown(answer)
-            
+
             memory.save_context({"input": prompt}, {"answer": answer})
 
 if st.button("Limpiar Chat"):

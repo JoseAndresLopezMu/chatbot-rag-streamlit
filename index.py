@@ -15,6 +15,7 @@ CHUNK_SIZE = 1000
 CHUNK_TAG = "customv2"
 TAGS_FOR_METADATA = ["general", "formulario"]
 INDEX_NAME_FILE = Path("last_index.txt")
+VISUALIZE_CHUNKS = True
 
 if __name__ == "__main__":
     logger.info("Iniciando el proceso de indexación de documentos...")
@@ -32,9 +33,10 @@ if __name__ == "__main__":
             tags_for_metadata=TAGS_FOR_METADATA,
             collection_name_prefix="rag_docs_advanced",
             pdf_folder_path=PDF_DIRECTORY.replace("./", ""),
-            include_image_descriptions=True
+            include_image_descriptions=True,
+            visualize_chunks=VISUALIZE_CHUNKS
         )
-        
+
         with open(INDEX_NAME_FILE, "w") as f:
             f.write(index_name)
 

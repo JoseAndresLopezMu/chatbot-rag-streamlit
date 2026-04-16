@@ -1,0 +1,61 @@
+name: CI — Chatbot RAG
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── 1. LINT ───────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install test dependencies
+        # Only install lightweight deps needed for lint+test.
+        # Heavy ML stack (easyocr, torch, chromadb…) is mocked in conftest.py.
+        run: uv pip install --system ruff pytest loguru tqdm
+
+      - name: Ruff — check
+        run: ruff check .
+
+  # ─── 2. TEST ───────────────────────────────────────────────────────────────
+  test:
+    name: Test (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install test dependencies
+        run: uv pip install --system pytest loguru tqdm
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  # ─── 3. SECURITY SCAN ─────────────────────────────────────────────────────
+  security:
+    name: Security scan (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install bandit
+        run: uv pip install --system bandit
+
+      - name: Run bandit
+        run: bandit -r . --exclude .venv,tests -ll -q

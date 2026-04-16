@@ -1,21 +1,19 @@
 import os
 from pathlib import Path
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List
 from uuid import uuid4
-import chromadb
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from loguru import logger
 from tqdm import tqdm
-import hashlib
-import json
 import re
 from datetime import datetime
 import pymupdf4llm
 from cache_to_disk import cache_to_disk
 from chonkie import RecursiveChunker, RecursiveLevel, RecursiveRules
 from chonkie.chunker.base import BaseChunker
+from chonkie.utils import Visualizer
 
 try:
     import easyocr
@@ -58,27 +56,45 @@ def get_chunker_advanced() -> BaseChunker:
         return_type="chunks",
     )
 
-def create_chunk_documents(pdf_paths: list[str], include_image_descriptions: bool) -> List[Document]:
+def create_chunk_documents(pdf_paths: list[str], include_image_descriptions: bool, visualize_chunks: bool = False) -> List[Document]:
     all_documents = []
     chunker = get_chunker_advanced()
+    visualizer = Visualizer() # Inicializamos el visualizador fuera del bucle
+
     for pdf_path in tqdm(pdf_paths, desc="Procesando PDFs"):
+        # 1. Obtenemos el texto base del PDF (sin OCR)
         md_text = get_md_from_pdf_path(pdf_path)
+
+        # 2. Si se quiere visualizar, lo hacemos AHORA, solo con el texto del PDF
+        if visualize_chunks:
+            logger.info("Generando visualización de chunks (solo texto de PDF)...")
+            # El visualizador necesita los chunks Y el texto original como tercer argumento posicional
+            chunks_for_viz = chunker(md_text)
+            output_path = f"visualizacion_{Path(pdf_path).stem}.html"
+            visualizer.save(chunks_for_viz, output_path, md_text)
+            logger.success(f"Visualización guardada en '{output_path}'.")
+
+        # 3. Ahora, añadimos el texto del OCR (si corresponde) para la indexación final
         if include_image_descriptions:
             image_descs = get_image_descriptions(pdf_path)
             if image_descs:
                 md_text += "\n\n--- Descripciones de Imágenes (OCR) ---\n" + "\n".join(image_descs)
-        
-        chunks = chunker(md_text)
-        metadata_list = extract_metadata_advanced(pdf_path, root_dir, [c.text for c in chunks])
-        for i, chunk in enumerate(chunks):
+
+        # 4. Generamos los chunks definitivos a partir del texto completo (PDF + OCR)
+        final_chunks = chunker(md_text)
+
+        # 5. Creamos los documentos para la base de datos a partir de los chunks definitivos
+        metadata_list = extract_metadata_advanced(pdf_path, root_dir, [c.text for c in final_chunks])
+        for i, chunk in enumerate(final_chunks):
             all_documents.append(Document(page_content=chunk.text, metadata=metadata_list[i]))
+
     return all_documents
 
 def get_vectorstore_from_disk(embedding_model_name: str, index_name: str) -> Chroma:
     db_path = root_dir / f"chroma_db/{index_name}"
     if not db_path.exists():
         raise FileNotFoundError(f"El índice '{index_name}' no existe. Ejecuta index.py primero.")
-    
+
     embedding_model = OllamaEmbeddings(model=embedding_model_name)
     vector_store = Chroma(
         persist_directory=str(db_path),
@@ -91,8 +107,15 @@ def get_vectorstore_from_disk(embedding_model_name: str, index_name: str) -> Chr
 def create_and_persist_vectorstore(embedding_model_name: str, pdf_paths: List[str], **kwargs) -> Tuple[Chroma, str]:
     index_name = f"{kwargs.get('collection_name_prefix', 'rag_docs')}-{uuid4()}"
     db_path = root_dir / f"chroma_db/{index_name}"
-    
-    documents = create_chunk_documents(pdf_paths, kwargs.get('include_image_descriptions', False))
+
+    # Pasamos el nuevo parámetro a la función que crea los documentos
+    visualize = kwargs.get('visualize_chunks', False)
+    documents = create_chunk_documents(
+        pdf_paths,
+        kwargs.get('include_image_descriptions', False),
+        visualize_chunks=visualize
+    )
+
     logger.info(f"Creando índice '{index_name}' con {len(documents)} chunks...")
 
     embedding_model = OllamaEmbeddings(model=embedding_model_name, show_progress=True)
@@ -111,16 +134,16 @@ def extract_structured_info_from_pdf(pdf_path: str) -> dict:
     try:
         md_text = get_md_from_pdf_path(pdf_path)
         lines = md_text.split('\n')
-        
+
         table_headers = []
         is_in_table_data = False
 
         for line in lines:
             cleaned_line = line.strip()
-            
+
             if cleaned_line.startswith("|") and cleaned_line.endswith("|"):
                 columns = [c.replace("<br>", " ").strip() for c in cleaned_line[1:-1].split("|")]
-                
+
                 if len(columns) == 2:
                     for cell in columns:
                         if ":" in cell:
@@ -132,14 +155,14 @@ def extract_structured_info_from_pdf(pdf_path: str) -> dict:
                     table_headers = [h.lower().replace(" ", "_") for h in columns]
                     is_in_table_data = True
                     continue
-                
+
                 if is_in_table_data and not all(re.match(r"[-: ]*$", c) for c in columns if c):
                     for i, header in enumerate(table_headers):
                         if i < len(columns) and columns[i]:
                             final_header = f"empleado_{header}"
                             extracted_data[final_header] = columns[i]
                     is_in_table_data = False
-            
+
             elif ":" in cleaned_line:
                 key, value = map(str.strip, cleaned_line.split(":", 1))
                 if key and value:
@@ -147,11 +170,12 @@ def extract_structured_info_from_pdf(pdf_path: str) -> dict:
 
     except Exception as e:
         logger.error(f"Error final al procesar el formulario: {e}")
-    
+
     return extracted_data
 
 def get_image_descriptions(pdf_path: str) -> List[str]:
-    if not all([easyocr, fitz, io]): return []
+    if not all([easyocr, fitz, io]):
+        return []
     try:
         reader = easyocr.Reader(['es'])
     except Exception as e:

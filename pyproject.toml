@@ -25,5 +25,25 @@ dependencies = [
 ]
 
 [tool.setuptools]
-# Permite que se encuentren los paquetes automáticamente
 packages = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.6.0",
+    "loguru>=0.7.0",
+    "tqdm>=4.0.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+exclude = ["notebooks", ".venv"]
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
