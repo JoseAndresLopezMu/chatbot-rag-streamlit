@@ -19,7 +19,7 @@ from utils import (
 
 load_dotenv()
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 FORMULARIO_PDF_PATH = "./documents/formulario.pdf"
 INDEX_NAME_FILE = Path("last_index.txt")
