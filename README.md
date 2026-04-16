@@ -1,5 +1,10 @@
 # Chatbot RAG con Agente y Ejecución de Código 🚀
 
+![CI](https://github.com/JoseAndresLopezMu/chatbot-rag-streamlit/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.10-blue)
+![Streamlit](https://img.shields.io/badge/streamlit-1.46+-red)
+![LangChain](https://img.shields.io/badge/langchain-0.3+-yellow)
+
 Este proyecto implementa un chatbot avanzado que utiliza un modelo de lenguaje (LLM) a través de **Ollama**. El chatbot es capaz de responder preguntas basándose en una colección de documentos PDF (técnica RAG), mantener el contexto de la conversación, ejecutar código Python y extraer información estructurada de formularios.
 
 ---
