@@ -6,7 +6,7 @@ from pathlib import Path
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnablePassthrough
-from langchain_ollama import ChatOllama
+from langchain_groq import ChatGroq
 from langchain_chroma import Chroma
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -19,8 +19,8 @@ from utils import (
 
 load_dotenv()
 
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
-EMBEDDING_MODEL_NAME = "nomic-embed-text"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 FORMULARIO_PDF_PATH = "./documents/formulario.pdf"
 INDEX_NAME_FILE = Path("last_index.txt")
 
@@ -38,30 +38,48 @@ def load_index_name() -> str | None:
     except FileNotFoundError:
         return None
 
-INDEX_TO_LOAD = load_index_name()
-
 @st.cache_resource
 def load_llm():
-    return ChatOllama(model=OLLAMA_MODEL, temperature=0)
+    return ChatGroq(model=GROQ_MODEL, temperature=0)
 
 @st.cache_resource
 def load_retriever():
-    if not INDEX_TO_LOAD:
-        st.error("Error: No se encontró el índice. Por favor, ejecuta el script `index.py` primero.", icon="❌")
-        st.stop()
+    from langchain_huggingface import HuggingFaceEmbeddings
+    embedding_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+
+    index_name = load_index_name()
+
+    # Auto-build index on first run (e.g. Streamlit Cloud where filesystem is ephemeral)
+    if not index_name:
+        pdf_paths = [str(p) for p in Path("./documents").glob("*.pdf")]
+        if not pdf_paths:
+            st.error("No se encontraron documentos PDF en la carpeta 'documents/'.", icon="❌")
+            st.stop()
+        with st.spinner("Indexando documentos (esto solo ocurre la primera vez)..."):
+            from utils import create_and_persist_vectorstore
+            _, index_name = create_and_persist_vectorstore(
+                embedding_model_name=EMBEDDING_MODEL_NAME,
+                pdf_paths=pdf_paths,
+                chunk_size=1000,
+                chunk_tag="cloud",
+                tags_for_metadata=["general"],
+                collection_name_prefix="rag_docs",
+                pdf_folder_path="documents",
+                include_image_descriptions=False,
+                visualize_chunks=False,
+            )
+            INDEX_NAME_FILE.write_text(index_name)
 
     try:
-        from langchain_community.embeddings import OllamaEmbeddings
-        embedding_model = OllamaEmbeddings(model=EMBEDDING_MODEL_NAME)
         vector_store = Chroma(
-            persist_directory=f"./chroma_db/{INDEX_TO_LOAD}",
+            persist_directory=f"./chroma_db/{index_name}",
             embedding_function=embedding_model,
-            collection_name=INDEX_TO_LOAD
+            collection_name=index_name,
         )
-        st.success(f"Base de datos '{INDEX_TO_LOAD}' cargada.", icon="✅")
+        st.success(f"Base de datos '{index_name}' cargada.", icon="✅")
         return vector_store.as_retriever()
     except Exception as e:
-        st.error(f"Error al cargar la base de datos vectorial '{INDEX_TO_LOAD}': {e}", icon="❌")
+        st.error(f"Error al cargar la base de datos vectorial: {e}", icon="❌")
         st.stop()
 
 def execute_python_code(code: str) -> str:

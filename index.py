@@ -9,7 +9,7 @@ from utils import create_and_persist_vectorstore
 load_dotenv()
 
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:1b")
-EMBEDDING_MODEL_NAME = "nomic-embed-text"
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 PDF_DIRECTORY = "./documents"
 CHUNK_SIZE = 1000
 CHUNK_TAG = "customv2"

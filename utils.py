@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from typing import Tuple, List
 from uuid import uuid4
-from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from loguru import logger
@@ -95,7 +94,8 @@ def get_vectorstore_from_disk(embedding_model_name: str, index_name: str) -> Chr
     if not db_path.exists():
         raise FileNotFoundError(f"El índice '{index_name}' no existe. Ejecuta index.py primero.")
 
-    embedding_model = OllamaEmbeddings(model=embedding_model_name)
+    from langchain_huggingface import HuggingFaceEmbeddings
+    embedding_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
     vector_store = Chroma(
         persist_directory=str(db_path),
         embedding_function=embedding_model,
@@ -118,7 +118,8 @@ def create_and_persist_vectorstore(embedding_model_name: str, pdf_paths: List[st
 
     logger.info(f"Creando índice '{index_name}' con {len(documents)} chunks...")
 
-    embedding_model = OllamaEmbeddings(model=embedding_model_name, show_progress=True)
+    from langchain_huggingface import HuggingFaceEmbeddings
+    embedding_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
     vector_store = Chroma.from_documents(
         documents=documents,
         embedding=embedding_model,
