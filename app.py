@@ -26,8 +26,8 @@ INDEX_NAME_FILE = Path("last_index.txt")
 
 PROMPTS_DIR = Path("./prompts")
 try:
-    PYTHON_PROMPT_TEMPLATE = (PROMPTS_DIR / "calculator.prompt.txt").read_text()
-    RAG_SYSTEM_PROMPT = (PROMPTS_DIR / "rag_system.prompt.txt").read_text()
+    PYTHON_PROMPT_TEMPLATE = (PROMPTS_DIR / "calculator.prompt.txt").read_text(encoding="utf-8")
+    RAG_SYSTEM_PROMPT = (PROMPTS_DIR / "rag_system.prompt.txt").read_text(encoding="utf-8")
 except FileNotFoundError:
     st.error("Error: La carpeta 'prompts' o los archivos de prompts no se encontraron.")
     st.stop()
@@ -77,7 +77,10 @@ def load_retriever():
             collection_name=index_name,
         )
         st.success(f"Base de datos '{index_name}' cargada.", icon="✅")
-        return vector_store.as_retriever()
+        return vector_store.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={"score_threshold": 0.1, "k": 4},
+        )
     except Exception as e:
         st.error(f"Error al cargar la base de datos vectorial: {e}", icon="❌")
         st.stop()
